@@ -74,6 +74,7 @@ const ARP = [[0, 4, 7], [0, 3, 7], [0, 3, 6], [0, 4, 8], [0, 5, 7], [0, 2, 7], [
 const ARP_NAMES = ['Maior', 'Menor', 'Diminuta', 'Aumentada', 'Suspensa (4ª)', 'Suspensa (2ª)', 'Maior com 7ª maior', 'Dominante', 'Menor com 7ª', 'Meio-diminuto', 'Diminuto', 'Menor com 7ª maior', 'Aumentado com 7ª maior', 'Maior com 6ª', 'Menor com 6ª', 'Dominante suspenso'];
 const ARP_SYM = ['', 'm', 'dim', '+', 'sus4', 'sus2', '7M', '7', 'm7', 'm7(b5)', '°', 'm(7M)', '7M(#5)', '6', 'm6', '7sus4'];
 const ARP_ABOUT = ['Tônica, 3ª maior e 5ª: o acorde maior. Som alegre e resolvido.', 'Tônica, 3ª menor e 5ª: o acorde menor. Som triste, introspectivo.', 'Duas 3ªs menores (1 b3 b5): tensa, instável. É o acorde do vii grau (B dim no tom de C).', 'Duas 3ªs maiores (1 3 #5): som de suspense que puxa pra frente. Passagem clássica: C → C+ → F.', 'Sem a 3ª, com a 4ª no lugar: som suspenso que pede pra resolver na 3ª (Dsus4 → D). Muito usado no louvor.', 'Sem a 3ª, com a 2ª no lugar: som aberto e moderno, muito usado no louvor e no pop.', 'Maior com 7ª maior: suave e sofisticado. É o acorde do I e do IV no tom maior (C7M, F7M).', 'Maior com 7ª menor (dominante): tenso, pede pra resolver. É o V7 do tom (G7 → C).', 'Menor com 7ª menor: o menor mais usado no louvor e na MPB. Acorde do ii, iii e vi (Dm7, Em7 e Am7 no tom de C).', 'Menor com 5ª diminuta e 7ª menor. É o vii do tom maior (Bm7(b5) em C) e o ii do tom menor.', 'Três 3ªs menores seguidas: cada nota fica 1 tom e meio da outra. Simétrico: o desenho se repete a cada 3 casas. Passagem clássica: C → C#° → Dm.', 'Menor com 7ª maior: som de suspense, de trilha de filme. É o i da menor harmônica (Am(7M)).', 'Aumentado com 7ª maior: brilhante e misterioso. É o III da menor harmônica (C7M(#5) no tom de Lá menor).', 'Maior com 6ª: som leve, de bossa e MPB. Mesmas notas do m7 do relativo (C6 = Am7).', 'Menor com 6ª maior: o som do Dórico, bem usado na bossa e no jazz.', 'Dominante com a 4ª no lugar da 3ª: prepara o V7 (G7sus4 → G7 → C). Também escrito 7/4.'];
+let SCALE_PLAY = null;
 const GTR = [40, 45, 50, 55, 59, 64], BASS5 = [23, 28, 33, 38, 43], ARP_MAX = 22;
 
 function scPosition(scale, root, tune, p) {
@@ -116,6 +117,7 @@ const DEG = ['1', 'b2', '2', 'b3', '3', '4', 'b5', '5', 'b6', '6', 'b7', '7'];
 function degName(iv, ivs) { if (iv === 8 && ivs.includes(4) && !ivs.includes(7)) return '#5'; if (iv === 6 && ivs.includes(5) && ivs.includes(7) && !ivs.includes(4)) return 'b5'; if (iv === 6 && ivs.includes(7)) return '#4'; return DEG[iv]; }
 
 function scalePage(arp) {
+  if (SCALE_PLAY) { stopSeq(); SCALE_PLAY = null; }
   const page = $('#page'); const K = arp ? 'arpejos' : 'escalas';
   const S = store.get(K, { k: arp ? 4 : 9, s: arp ? 1 : 0, inst: 'g', view: arp ? 'v' : 'p', p: 1, deg: false, str: 0 });
   const save = () => { store.set(K, S); scalePage(arp); };
@@ -142,10 +144,12 @@ function scalePage(arp) {
   const dot = p => p === S.k ? '#FF8A1E' : (((p - S.k + 12) % 12) === blue ? '#B18CFF' : '#4F8BFF');
   let draw = '';
   if (S.inst === 'k') {
-    // teclado: 2 oitavas
-    const W = 340, ww = W / 14, WI = [0, 2, 4, 5, 7, 9, 11]; let s = `<svg viewBox="0 0 ${W} 130" width="100%">`;
-    for (let o = 0; o < 2; o++) WI.forEach((p, i) => { const x = (o * 7 + i) * ww, on = pcs.includes(p); s += `<rect x="${x + .5}" y="4" width="${ww - 1.5}" height="120" rx="4" fill="${on ? dot(p) : '#E9EBEF'}"/>${on ? `<text x="${x + ww / 2}" y="112" text-anchor="middle" font-size="11" font-weight="800" fill="#111">${lab(p)}</text>` : ''}`; });
-    for (let o = 0; o < 2; o++) [1, 3, 6, 8, 10].forEach(p => { const wi = WI.filter(w => w < p).length, x = (o * 7 + wi) * ww - ww * .3, on = pcs.includes(p); s += `<rect x="${x}" y="4" width="${ww * .6}" height="74" rx="3" fill="${on ? dot(p) : '#2B2C30'}"/>${on ? `<text x="${x + ww * .3}" y="70" text-anchor="middle" font-size="8.5" font-weight="800" fill="#111">${lab(p)}</text>` : ''}`; });
+    // teclado: 2 oitavas a partir da tônica (é o que toca no Ouvir)
+    const isB = m => [1, 3, 6, 8, 10].includes(m % 12); let lo = 60 + S.k, hi = lo + 24; while (isB(lo)) lo--; while (isB(hi)) hi++;
+    const whites = []; for (let m = lo; m <= hi; m++) if (!isB(m)) whites.push(m);
+    const ww = 24, W = whites.length * ww; let s = `<svg viewBox="0 0 ${W} 130" width="100%">`;
+    whites.forEach((m, i) => { const p = m % 12, x = i * ww, on = pcs.includes(p); s += `<rect data-m="${m}" x="${x + .5}" y="4" width="${ww - 1.5}" height="120" rx="4" fill="${on ? dot(p) : '#E9EBEF'}"/>${on ? `<text x="${x + ww / 2}" y="112" text-anchor="middle" font-size="10" font-weight="800" fill="#111">${lab(p)}</text>` : ''}`; });
+    for (let m = lo; m <= hi; m++) if (isB(m)) { const wi = whites.filter(w => w < m).length, x = wi * ww - ww * .3, p = m % 12, on = pcs.includes(p); s += `<rect data-m="${m}" x="${x}" y="4" width="${ww * .6}" height="74" rx="3" fill="${on ? dot(p) : '#2B2C30'}"/>${on ? `<text x="${x + ww * .3}" y="70" text-anchor="middle" font-size="7.5" font-weight="800" fill="#111">${lab(p)}</text>` : ''}`; }
     draw = `<div class="fret" style="padding:8px">${s}</svg></div>`;
   } else {
     const all = frets.flat(); let lo = 0, hi = 15;
@@ -157,7 +161,7 @@ function scalePage(arp) {
       if ([3, 5, 7, 9, 15, 17, 19, 21].includes(f)) s += `<circle cx="${xOf(f)}" cy="${H - 9}" r="3.5" fill="#666"/>`; if (f === 12) s += `<circle cx="${xOf(f) - 6}" cy="${H - 9}" r="3.5" fill="#666"/><circle cx="${xOf(f) + 6}" cy="${H - 9}" r="3.5" fill="#666"/>`;
       s += `<text x="${xOf(f)}" y="10" text-anchor="middle" font-size="10" fill="#888">${f}</text>`; }
     for (let st = 0; st < ns; st++) s += `<line x1="24" y1="${yOf(st)}" x2="${W - 6}" y2="${yOf(st)}" stroke="#9a9a9a" stroke-width="${1 + (ns - st) * .25}"/><text x="10" y="${yOf(st) + 4}" text-anchor="middle" font-size="11" font-weight="700" fill="#888">${nm[tune[st] % 12]}</text>`;
-    frets.forEach((l, st) => l.forEach(f => { if (f < lo || f > hi) return; const p = (tune[st] + f) % 12; s += `<circle cx="${xOf(f)}" cy="${yOf(st)}" r="12" fill="${dot(p)}"/><text x="${xOf(f)}" y="${yOf(st) + 4}" text-anchor="middle" font-size="10.5" font-weight="800" fill="#111">${lab(p)}</text>`; }));
+    frets.forEach((l, st) => l.forEach(f => { if (f < lo || f > hi) return; const p = (tune[st] + f) % 12; s += `<circle data-s="${st}" data-f="${f}" cx="${xOf(f)}" cy="${yOf(st)}" r="12" fill="${dot(p)}"/><text x="${xOf(f)}" y="${yOf(st) + 4}" text-anchor="middle" font-size="10.5" font-weight="800" fill="#111">${lab(p)}</text>`; }));
     draw = `<div class="fret" id="fr">${s}</svg></div>`;
   }
   const viewChips = S.inst === 'k' ? '' : arp ? `<div class="row" style="margin-top:8px">${[['v', 'Vertical'], ['d', 'Diagonal'], ['w', 'Braço inteiro']].map(([v, n]) => `<button class="chip ${S.view === v ? 'on' : ''}" data-v="${v}">${n}</button>`).join('')}</div>
@@ -172,7 +176,7 @@ function scalePage(arp) {
     ${draw}
     ${posLabel ? `<div class="nav2"><button class="ib" id="pv">◀</button><div>${posLabel}</div><button class="ib" id="nx">▶</button></div>` : ''}
     <div class="box"><b>${pcs.map(p => nm[p]).join(' ')}</b> <span class="m">· ${ivs.map(i => degName(i, ivs)).join(' ')}</span><div class="m" style="margin-top:4px">${arp ? ARP_ABOUT[S.s] : SC_ABOUT[S.s]}</div></div>
-    <div class="row" style="margin-top:10px"><button class="btn ac" id="pl">${icon('play', 16)} Ouvir</button></div>
+    <div class="row" style="margin-top:10px"><button class="btn ac" id="pl" style="min-width:140px">${icon('play', 16)} Ouvir</button></div>
   </div>`;
   $$('[data-k]', page).forEach(b => b.onclick = () => { S.k = +b.dataset.k; S.p = 1; save(); });
   $$('[data-i]', page).forEach(b => b.onclick = () => { S.inst = b.dataset.i; S.p = 1; save(); });
@@ -180,7 +184,24 @@ function scalePage(arp) {
   $$('[data-st]', page).forEach(b => b.onclick = () => { S.str = +b.dataset.st; S.p = 1; save(); });
   $('#dg', page).onclick = () => { S.deg = !S.deg; save(); };
   if ($('#pv', page)) { $('#pv', page).onclick = () => { S.p = S.p <= 1 ? nPos : S.p - 1; save(); }; $('#nx', page).onclick = () => { S.p = S.p >= nPos ? 1 : S.p + 1; save(); }; }
-  $('#pl', page).onclick = () => arp ? (playPcs(pcs, S.k), setTimeout(() => playScale(ivs.map(i => (S.k + i) % 12)), 900)) : playScale(pcs);
+  // ouvir: sobe e desce (todas as cordas da posição / 2 oitavas no teclado), a nota tocando acende; o botão vira Parar
+  const plB = $('#pl', page);
+  const stopPlay = () => { stopSeq(); SCALE_PLAY = null; $$('.hit', page).forEach(e => e.classList.remove('hit')); plB.innerHTML = `${icon('play', 16)} Ouvir`; plB.classList.add('ac'); };
+  plB.onclick = () => {
+    if (SCALE_PLAY) { stopPlay(); return; }
+    let seq = [];
+    if (S.inst === 'k') { const base = 60 + S.k; for (let o = 0; o < 2; o++) ivs.forEach(i => seq.push({ m: base + 12 * o + i })); seq.push({ m: base + 24 }); }
+    else if (frets && (S.view === 'p' || (arp && S.view !== 'w'))) { frets.forEach((l, st) => l.forEach(f => seq.push({ m: tune[st] + f, st, f }))); seq.sort((a, b) => a.m - b.m); }
+    else { const b0 = tune[0] + ((S.k - tune[0]) % 12 + 12) % 12; ivs.forEach(i => seq.push({ m: b0 + i })); seq.push({ m: b0 + 12 }); }
+    for (let i = seq.length - 2; i >= 0; i--) seq.push(seq[i]);                 // e desce
+    audio(); stopSeq(); const STEP = .26, t0 = AC.currentTime + .08; SCALE_PLAY = seq;
+    seq.forEach((n, i) => { note(n.m, t0 + i * STEP, i === seq.length - 1 ? 1.4 : STEP * 1.1, i === seq.length - 1 ? .66 : .6);
+      timers.push(setTimeout(() => { $$('.hit', page).forEach(e => e.classList.remove('hit'));
+        const el = n.st != null ? $(`circle[data-s="${n.st}"][data-f="${n.f}"]`, page) : ($(`rect[data-m="${n.m}"]`, page) || null);
+        if (el) el.classList.add('hit'); }, i * STEP * 1000 + 80)); });
+    timers.push(setTimeout(stopPlay, seq.length * STEP * 1000 + 600));
+    plB.innerHTML = '■ Parar'; plB.classList.remove('ac');
+  };
   $('#pick', page).onclick = () => {
     let html = '';
     if (arp) [['Tríades', 0, 6, '#3DDC84'], ['Tétrades', 6, 16, '#B18CFF']].forEach(([g, a, b, c]) => { html += `<div class="sec">${g}</div>`; for (let i = a; i < b; i++) html += tint({ title: nm[S.k] + ARP_SYM[i], sub: ARP_NAMES[i], glyph: g[0] === 'T' && i < 6 ? '3' : '4', color: c, attrs: `data-pk="${i}"` }); });

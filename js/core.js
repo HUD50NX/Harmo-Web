@@ -60,7 +60,7 @@ const store = {
 
 
 // ---------------- piano (port do SynthCore) ----------------
-let AC, OUT; const BUF = {}; let timers = [];
+let AC, OUT; const BUF = {}; let timers = [], LIVE = [];
 function audio() {
   if (!AC) {
     AC = new (window.AudioContext || window.webkitAudioContext)();
@@ -97,10 +97,14 @@ function note(midi, t, d, vel) {
   audio(); t = t || AC.currentTime + .04; d = d || 1.5;
   const s = AC.createBufferSource(); s.buffer = pianoBuf(midi, vel || .7); const g = AC.createGain(); s.connect(g); g.connect(OUT);
   const td = midi < 48 ? .2 : midi < 72 ? .12 : .08; g.gain.setValueAtTime(1, t + d); g.gain.setTargetAtTime(0, t + d, td / 3); s.start(t); s.stop(t + d + td * 3);
+  LIVE.push({ s, g, end: t + d + td * 3 }); if (LIVE.length > 200) LIVE = LIVE.filter(x => x.end > AC.currentTime);
 }
 function playPcs(pcs, bass, t, d) { audio(); t = t || AC.currentTime + .05; d = d || 1.6; pcs.map(p => 55 + ((p - 55) % 12 + 12) % 12).sort((a, b) => a - b).forEach((m, i) => note(m, t + i * .012, d, .62)); if (bass != null && bass >= 0) note(36 + bass, t, d, .7); }
 function playChord(t, when, d) { const c = chordPcs(t); if (c) playPcs(c.pcs, c.bass, when, d); }
-function stopSeq() { timers.forEach(clearTimeout); timers = []; }
+/** Para tudo: o que ia tocar não toca, e o que está soando abafa rápido. */
+function stopSeq() { timers.forEach(clearTimeout); timers = []; if (!AC) return; const now = AC.currentTime;
+  for (const x of LIVE) { if (x.end <= now) continue; try { x.g.gain.cancelScheduledValues(now); x.g.gain.setValueAtTime(x.g.gain.value, now); x.g.gain.setTargetAtTime(0, now, .03); x.s.stop(now + .2); } catch (e) {} }
+  LIVE = []; }
 /** Toca uma lista de acordes (texto) em sequência; onStep(i) acende o atual (-1 no fim). */
 function playSeq(list, onStep, step) {
   audio(); stopSeq(); step = step || 1; const t0 = AC.currentTime + .08;
