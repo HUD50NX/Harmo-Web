@@ -6,12 +6,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
       - shell: bash {0}
         run: |
-          mkdir o; U="https://www.cifraclub.com.br/hillsong-united/oceans-where-feet-may-fail/"
-          curl -s -m 40 -H "Origin: https://harmo-web.vercel.app" "https://r.jina.ai/$U" -o o/md.txt
-          curl -s -m 40 -H "X-Return-Format: html" "https://r.jina.ai/$U" -o o/html.txt
-          curl -s -m 40 -H "X-Return-Format: html" -H "X-Target-Selector: pre" "https://r.jina.ai/$U" -o o/pre.txt
-          curl -s -m 40 -H "X-Return-Format: html" "https://r.jina.ai/https://www.cifraclub.com.br/aline-barros/musicas.html" -o o/art.txt
-          wc -c o/*
-          git config user.name t; git config user.email t@x; git checkout -q --orphan teste-out; git rm -rfq --cached .; git add o; git commit -qm r; git push -qf origin teste-out
+          sleep 45; mkdir o; cd o; npm init -y >/dev/null; npm i playwright@1.49.1 >/dev/null 2>&1; npx playwright install chromium >/dev/null 2>&1
+          cat > t.js <<'JS'
+          const { chromium, devices } = require('playwright');
+          (async()=>{const b=await chromium.launch();const c=await b.newContext({...devices['iPhone 13']});const p=await c.newPage();const log=[];p.on('console',m=>log.push(m.type()+': '+m.text()));p.on('pageerror',e=>log.push('ERR '+e));
+          await p.goto('https://harmo-web.vercel.app/#cifras');await p.fill('#q','oceans hillsong');await p.tap('#web');await p.waitForTimeout(4000);await p.screenshot({path:'a.png'});
+          const n=await p.locator('[data-dns]').count();log.push('resultados '+n);
+          await p.locator('[data-dns]').first().tap();await p.waitForTimeout(15000);await p.screenshot({path:'b.png'});
+          log.push('url '+p.url());log.push('acordes '+await p.locator('.cifra .ch').count());
+          await p.goto('https://harmo-web.vercel.app/#cifras');await p.fill('#q','aline barros');await p.tap('#web');await p.waitForTimeout(4000);
+          const art=p.locator('[data-art]');log.push('artistas '+await art.count());if(await art.count()){await art.first().tap();await p.waitForTimeout(15000);log.push('musicas '+await p.locator('[data-dns]').count());await p.screenshot({path:'c.png'});}
+          require('fs').writeFileSync('log.txt',log.join('\n'));await b.close();})();
+          JS
+          node t.js; cat log.txt
+          cd ..; git config user.name t; git config user.email t@x; git checkout -q --orphan teste-out; git rm -rfq --cached .; git add o/log.txt o/*.png; git commit -qm r; git push -qf origin teste-out
