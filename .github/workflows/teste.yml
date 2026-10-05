@@ -8,11 +8,10 @@ jobs:
       - uses: actions/checkout@v4
       - shell: bash {0}
         run: |
-          U="https://www.cifraclub.com.br/hillsong-united/oceans-where-feet-may-fail/"
-          E=$(python3 -c "import urllib.parse;print(urllib.parse.quote('$U',safe=''))")
-          for p in "https://corsproxy.io/?url=$E" "https://api.allorigins.win/raw?url=$E" "https://api.codetabs.com/v1/proxy?quest=$U" "https://r.jina.ai/$U" "https://cors.eu.org/$U" "https://thingproxy.freeboard.io/fetch/$U" "https://api.cors.lol/?url=$E" "https://whateverorigin.org/get?url=$E"; do
-            curl -s -m 25 -D h.txt -o b.txt -H "Origin: https://harmo-web.vercel.app" "$p" || true; touch h.txt b.txt
-            echo "$p => $(head -1 h.txt | tr -d '\r') len=$(wc -c < b.txt) acao=$(grep -i '^access-control-allow-origin' h.txt | tr -d '\r') pre=$(grep -c 'data-chord-content\|You call me out' b.txt)" >> r.txt
-          done
-          cat r.txt
-          git config user.name t; git config user.email t@x; git checkout -q --orphan teste-out; git rm -rfq --cached .; git add r.txt; git commit -qm r; git push -qf origin teste-out
+          mkdir o; U="https://www.cifraclub.com.br/hillsong-united/oceans-where-feet-may-fail/"
+          curl -s -m 40 -H "Origin: https://harmo-web.vercel.app" "https://r.jina.ai/$U" -o o/md.txt
+          curl -s -m 40 -H "X-Return-Format: html" "https://r.jina.ai/$U" -o o/html.txt
+          curl -s -m 40 -H "X-Return-Format: html" -H "X-Target-Selector: pre" "https://r.jina.ai/$U" -o o/pre.txt
+          curl -s -m 40 -H "X-Return-Format: html" "https://r.jina.ai/https://www.cifraclub.com.br/aline-barros/musicas.html" -o o/art.txt
+          wc -c o/*
+          git config user.name t; git config user.email t@x; git checkout -q --orphan teste-out; git rm -rfq --cached .; git add o; git commit -qm r; git push -qf origin teste-out
