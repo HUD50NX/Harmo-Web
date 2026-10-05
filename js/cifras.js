@@ -2,6 +2,21 @@
 'use strict';
 const API = (window.HARMO_API || '') + '/api';
 const SEARCH = 'https://solr.sscdn.co/cc/c7/?q=';
+const SITE = 'https://www.cifraclub.com.br/';
+/** A página pelo leitor (r.jina.ai, que libera pro navegador); se falhar, pelo nosso servidorzinho. */
+async function getPage(url) {
+  const r = await fetch('https://r.jina.ai/' + url, { headers: { 'X-Return-Format': 'html' } });
+  if (!r.ok) throw new Error('leitor ' + r.status); return await r.text();
+}
+async function fetchCifra(a, m) {
+  try { const o = parseCifra(await getPage(`${SITE}${a}/${m}/`)); if (o && o.x.trim()) return o; } catch (e) {}
+  const r = await fetch(`${API}/cifra?a=${encodeURIComponent(a)}&m=${encodeURIComponent(m)}`); return await r.json();
+}
+async function fetchSongs(a) {
+  const all = [], seen = new Set();
+  for (const u of [`${SITE}${a}/musicas.html`, `${SITE}${a}/`]) { try { for (const s of songsFrom(await getPage(u), a)) if (!seen.has(s.u)) { seen.add(s.u); all.push(s); } } catch (e) {} if (all.length >= 40) break; }
+  return all;
+}
 const cifras = () => store.get('cifras', []);
 const saveCifras = l => store.set('cifras', l);
 const getCifra = id => cifras().find(c => c.id === id);
@@ -49,7 +64,7 @@ async function webSearchMore(q, start) { return await webSearch(q, start) || '<d
 async function artistSongs(dns, name) {
   sheet(esc(name), '<div class="empty">Buscando as músicas…</div>');
   try {
-    const r = await fetch(`${API}/artista?a=${encodeURIComponent(dns)}`); const j = await r.json(); if (!j.songs) throw 0;
+    const j = { songs: await fetchSongs(dns) }; if (!j.songs.length) throw 0;
     sheet(`${esc(name)} <span style="color:var(--mut);font-weight:600;font-size:14px">· ${j.songs.length} músicas</span>`, j.songs.map(s => tint({ title: s.t, sub: name, glyph: '♪', color: '#FF8A1E', attrs: `data-dns="${esc(dns)}" data-url="${esc(s.u)}" data-t="${esc(s.t)}" data-a="${esc(name)}"` })).join(''),
       sh => $$('[data-dns]', sh).forEach(b => b.onclick = () => importCifra(b.dataset.dns, b.dataset.url, b.dataset.t, b.dataset.a)));
   } catch (e) { sheet(esc(name), '<div class="empty">Não consegui buscar as músicas agora.</div>'); }
@@ -58,7 +73,7 @@ async function importCifra(dns, url, t, a) {
   const id = dns + '/' + url; const old = getCifra(id); if (old) { closeSheet(); go('cifra/' + id); return; }
   sheet('Baixando…', `<div class="empty">Baixando a cifra de <b>${esc(t)}</b>…</div>`);
   try {
-    const r = await fetch(`${API}/cifra?a=${encodeURIComponent(dns)}&m=${encodeURIComponent(url)}`); const j = await r.json(); if (!j.x) throw new Error(j.erro || 'vazia');
+    const j = await fetchCifra(dns, url); if (!j || !j.x) throw new Error('vazia');
     const c = { id, t: j.t || t, a: j.a || a, k: j.k || '', x: cleanText(j.x), r: null, semi: 0, at: Date.now() };
     putCifra(c); closeSheet(); go('cifra/' + id);
   } catch (e) { sheet('Não deu pra baixar', `<div class="box" style="margin-top:0">A cifra não veio agora. Tente de novo daqui a pouco.</div><div class="box m">Se precisar já: copie a cifra de qualquer site e toque em <b>+</b> (Colar cifra) em Minhas cifras.</div>`); }
