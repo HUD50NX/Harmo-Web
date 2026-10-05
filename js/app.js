@@ -2,6 +2,7 @@
 'use strict';
 const ROUTES = {
   '': homePage,
+  'afinador': afinadorPage,
   'cifras': cifrasPage,
   'cifra': cifraPage,           // #cifra/<id>
   'teoria': teoriaPage,
@@ -29,8 +30,9 @@ function homePage(page) {
   page.innerHTML = `<div class="scroll"><div class="center">
     <div class="home-t"><h1><span>Harmo</span></h1><p>web</p></div>
     <div class="ggrid">
+      ${glass({ title: 'Afinador', icon: 'tuner', color: '#3DDC84', attrs: `onclick="go('afinador')"` })}
       ${glass({ title: 'Minhas cifras', icon: 'note', color: '#FF8A1E', attrs: `onclick="go('cifras')"` })}
-      ${glass({ title: 'Teoria', icon: 'book', color: '#4F8BFF', attrs: `onclick="go('teoria')"` })}
+      ${glass({ title: 'Teoria', icon: 'book', color: '#4F8BFF', wide: true, attrs: `onclick="go('teoria')"` })}
     </div>
     <div id="inst"></div>
   </div></div>`;

@@ -119,6 +119,7 @@ function sheet(title, html, onOpen) {
 }
 function closeSheet() { $$('.sheetbg').forEach(b => b.remove()); stopSeq(); }
 const ICONS = {
+  tuner: '<path d="M4.5 16a8 8 0 1 1 15 0"/><path d="M12 16l3.5-5.5"/><circle cx="12" cy="16" r="1.4" fill="currentColor"/>',
   note: '<path d="M9 17.5V6l10-2v11.5"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/>',
   book: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v3H6.5"/>',
   search: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
@@ -140,4 +141,4 @@ function icon(n, size) { return `<svg class="ic" viewBox="0 0 24 24" width="${si
 /** Cartão no estilo TintCard do app (lista): cor, ícone, título, sub. */
 function tint(o) { return `<button class="tint" style="--c:${o.color}" ${o.attrs || ''}><span class="tq">${o.glyph ? `<b>${o.glyph}</b>` : icon(o.icon || 'note', 22)}</span><span class="tt"><b>${esc(o.title)}</b>${o.sub ? `<small>${esc(o.sub)}</small>` : ''}</span><span class="ta">›</span></button>`; }
 /** Botão grande "vidro escuro" (atalhos do Início). */
-function glass(o) { return `<button class="glass" style="--c:${o.color}" ${o.attrs || ''}><span class="gq">${icon(o.icon, 30)}</span><b>${o.title}</b></button>`; }
+function glass(o) { return `<button class="glass${o.wide ? ' wide' : ''}" style="--c:${o.color}" ${o.attrs || ''}><span class="gq">${icon(o.icon, 30)}</span><b>${o.title}</b></button>`; }
