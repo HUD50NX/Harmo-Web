@@ -1,0 +1,14 @@
+name: Teste Vercel
+on: { push: { branches: [teste-vercel] } }
+permissions: { contents: write }
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          for u in https://harmo-web.vercel.app https://harmo-web-teste-5bb8.vercel.app https://harmo-hip979ves-teste-5bb8.vercel.app; do curl -s -o /dev/null -w "$u %{http_code} %{redirect_url}\n" $u/ >> r.txt; done
+          curl -s "https://harmo-web.vercel.app/api/cifra?a=hillsong-united&m=oceans-where-feet-may-fail" | head -c 300 >> r.txt; echo >> r.txt
+          curl -s "https://harmo-web.vercel.app/api/artista?a=aline-barros" | head -c 200 >> r.txt
+          cat r.txt
+          git config user.name t; git config user.email t@x; git checkout -q --orphan teste-out; git rm -rfq --cached .; git add r.txt; git commit -qm r; git push -qf origin teste-out
