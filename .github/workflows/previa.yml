@@ -1,0 +1,22 @@
+name: Prévia (link provisório)
+on: { push: { branches: [previa] }, workflow_dispatch: {} }
+permissions: { contents: write }
+concurrency: { group: previa, cancel-in-progress: true }
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: |
+          node tools/serve.js > serve.log 2>&1 &
+          curl -sL -o cf https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 && chmod +x cf
+          ./cf tunnel --no-autoupdate --url http://localhost:8080 > cf.log 2>&1 &
+          for i in $(seq 1 60); do U=$(grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' cf.log | head -1); [ -n "$U" ] && break; sleep 2; done
+          echo "LINK: $U"
+          sleep 8; curl -s "http://localhost:8080/api/cifra?a=hillsong-united&m=oceans-where-feet-may-fail" | head -c 200 > teste.txt; cat teste.txt
+          git config user.name previa; git config user.email p@x
+          cp teste.txt /tmp/t; git checkout -q --orphan previa-link; git rm -rfq --cached . ; echo "$U" > link.txt; cp /tmp/t teste.txt; git add link.txt teste.txt; git commit -qm link; git push -qf origin previa-link
+          sleep 7000
